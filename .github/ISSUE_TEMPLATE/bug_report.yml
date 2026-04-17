@@ -1,0 +1,48 @@
+name: Bug report
+description: Report a problem with installation or conversion behavior
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Provide enough detail to reproduce the issue. Include distro and package versions when relevant.
+  - type: input
+    id: distro
+    attributes:
+      label: Distribution
+      placeholder: Arch Linux, Fedora, Ubuntu 24.04
+    validations:
+      required: true
+  - type: input
+    id: thunar-version
+    attributes:
+      label: Thunar version
+      placeholder: 4.18.x
+  - type: textarea
+    id: command
+    attributes:
+      label: Command or action used
+      description: Include the terminal command or describe the right-click action you used.
+      placeholder: ./install.sh --system
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output
+      description: Paste error output, notifications, or the relevant `uca.xml` snippet.
+      render: shell
