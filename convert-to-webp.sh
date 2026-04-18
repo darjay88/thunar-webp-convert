@@ -1,18 +1,113 @@
 #!/usr/bin/env bash
 # =============================================================================
 #  convert-to-webp.sh
-#  Converts one or more images to WebP at 800px wide, retaining aspect ratio.
+#  Converts one or more images to WebP using configurable width/quality.
 #  Usage: convert-to-webp.sh <image1> [image2] ...
 # =============================================================================
 
 set -euo pipefail
 
 # ---------- configuration ----------------------------------------------------
-TARGET_WIDTH=800
-QUALITY=85          # WebP quality (1-100); 85 is a good balance
-OUTPUT_SUFFIX=""    # leave empty to place output beside the source file
-                    # e.g. set to "-webp" → "photo-webp.webp"
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/webp-convert"
+CONFIG_FILE="${CONFIG_DIR}/config.toml"
+
+DEFAULT_TARGET_WIDTH=800
+DEFAULT_QUALITY=85
+DEFAULT_OUTPUT_SUFFIX=""
+
+TARGET_WIDTH=${DEFAULT_TARGET_WIDTH}
+QUALITY=${DEFAULT_QUALITY}
+OUTPUT_SUFFIX=${DEFAULT_OUTPUT_SUFFIX}
 # -----------------------------------------------------------------------------
+
+trim_spaces() {
+    local value=$1
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+    printf '%s' "$value"
+}
+
+parse_toml_value() {
+    local key=$1
+    local value
+
+    if [[ ! -f "$CONFIG_FILE" ]]; then
+        return 1
+    fi
+
+    value=$(awk -v search_key="$key" '
+        {
+            line = $0
+            sub(/^[[:space:]]+/, "", line)
+            if (line == "" || line ~ /^#/) {
+                next
+            }
+
+            split(line, parts, "=")
+            current_key = parts[1]
+            gsub(/[[:space:]]+$/, "", current_key)
+            gsub(/^[[:space:]]+/, "", current_key)
+
+            if (current_key != search_key) {
+                next
+            }
+
+            value = substr(line, index(line, "=") + 1)
+            gsub(/^[[:space:]]+/, "", value)
+            sub(/[[:space:]]+#.*/, "", value)
+            sub(/[[:space:]]+$/, "", value)
+
+            print value
+            exit
+        }
+    ' "$CONFIG_FILE")
+
+    if [[ -z "$value" ]]; then
+        return 1
+    fi
+
+    printf '%s' "$value"
+}
+
+load_config() {
+    local raw_width
+    local raw_quality
+    local raw_suffix
+
+    raw_width=$(parse_toml_value "target_width" || true)
+    if [[ -n "$raw_width" ]]; then
+        raw_width=$(trim_spaces "$raw_width")
+        if [[ "$raw_width" =~ ^[0-9]+$ && "$raw_width" -gt 0 ]]; then
+            TARGET_WIDTH=$raw_width
+        else
+            echo "WARN: Invalid target_width in ${CONFIG_FILE}; using ${DEFAULT_TARGET_WIDTH}." >&2
+        fi
+    fi
+
+    raw_quality=$(parse_toml_value "quality" || true)
+    if [[ -n "$raw_quality" ]]; then
+        raw_quality=$(trim_spaces "$raw_quality")
+        if [[ "$raw_quality" =~ ^[0-9]+$ && "$raw_quality" -ge 1 && "$raw_quality" -le 100 ]]; then
+            QUALITY=$raw_quality
+        else
+            echo "WARN: Invalid quality in ${CONFIG_FILE}; using ${DEFAULT_QUALITY}." >&2
+        fi
+    fi
+
+    raw_suffix=$(parse_toml_value "output_suffix" || true)
+    if [[ -n "$raw_suffix" ]]; then
+        raw_suffix=$(trim_spaces "$raw_suffix")
+        if [[ "$raw_suffix" =~ ^\".*\"$ ]]; then
+            raw_suffix=${raw_suffix#\"}
+            raw_suffix=${raw_suffix%\"}
+            OUTPUT_SUFFIX=$raw_suffix
+        else
+            echo "WARN: Invalid output_suffix in ${CONFIG_FILE}; expected quoted string. Using default." >&2
+        fi
+    fi
+}
+
+load_config
 
 # Dependency check
 if ! command -v cwebp &>/dev/null; then
@@ -54,7 +149,7 @@ for src in "$@"; do
 
     echo "▶ Converting: $src"
 
-    # Step 1: Resize to 800 px wide (retaining aspect ratio) into a temp PNG
+    # Step 1: Resize to configured max width (retaining aspect ratio) into a temp PNG
     tmp="$(mktemp /tmp/webp-resize-XXXXXX.png)"
     trap 'rm -f "$tmp"' EXIT
 

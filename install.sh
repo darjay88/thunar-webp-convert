@@ -7,10 +7,19 @@ SOURCE_SCRIPT="${SCRIPT_DIR}/convert-to-webp.sh"
 INSTALL_NAME="convert-to-webp"
 ACTION_ID="thunar-webp-convert"
 ACTION_NAME="Convert to WebP"
-ACTION_DESCRIPTION="Resize the selected image files to 800px wide and encode them as WebP."
+ACTION_DESCRIPTION="Convert selected image files to WebP using your config settings."
 ACTION_ICON="image-x-generic"
 THUNAR_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/Thunar"
 THUNAR_UCA_FILE="${THUNAR_CONFIG_DIR}/uca.xml"
+WEBP_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/webp-convert"
+WEBP_CONFIG_FILE="${WEBP_CONFIG_DIR}/config.toml"
+
+DEFAULT_WEBP_CONFIG_CONTENT=$(cat <<'EOF'
+target_width = 800
+quality = 85
+output_suffix = ""
+EOF
+)
 
 usage() {
     cat <<EOF
@@ -188,6 +197,16 @@ update_thunar_action() {
     rm -f "$tmp_clean" "$tmp_final"
 }
 
+ensure_webp_config() {
+    install -d -m 755 "$WEBP_CONFIG_DIR"
+
+    if [[ ! -f "$WEBP_CONFIG_FILE" ]]; then
+        printf '%s\n' "$DEFAULT_WEBP_CONFIG_CONTENT" > "$WEBP_CONFIG_FILE"
+        chmod 644 "$WEBP_CONFIG_FILE"
+        echo "Created config file: ${WEBP_CONFIG_FILE}"
+    fi
+}
+
 main() {
     local system_install=0
     local bin_dir_override=
@@ -238,6 +257,7 @@ main() {
     install -d -m 755 "$install_dir"
     install -m 755 "$SOURCE_SCRIPT" "$install_path"
 
+    ensure_webp_config
     update_thunar_action "$install_path"
 
     echo "Installed command: ${install_path}"

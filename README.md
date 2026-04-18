@@ -9,8 +9,8 @@ The project includes:
 
 ## What It Does
 
-- Resizes images to a maximum width of 800 pixels while preserving aspect ratio.
-- Encodes the resized image as WebP with quality set to 85.
+- Resizes images to a configurable maximum width while preserving aspect ratio.
+- Encodes the resized image as WebP with configurable quality.
 - Writes the `.webp` file beside the original file.
 - Supports converting multiple selected files at once.
 - Sends desktop notifications when dependencies are missing or after conversion completes.
@@ -47,6 +47,7 @@ Default behavior:
 
 - Installs the command as `convert-to-webp`
 - Uses `~/.local/bin` for a user-local install
+- Creates `~/.config/webp-convert/config.toml` if it does not already exist
 - Registers a Thunar custom action in `~/.config/Thunar/uca.xml`
 
 System-wide install:
@@ -82,11 +83,32 @@ The output file is written beside each source image using the same base filename
 
 ## Configuration
 
-Edit the top of `convert-to-webp.sh` to change:
+Settings are read from:
 
-- `TARGET_WIDTH`
-- `QUALITY`
-- `OUTPUT_SUFFIX`
+```bash
+~/.config/webp-convert/config.toml
+```
+
+Supported keys:
+
+- `target_width`
+- `quality`
+- `output_suffix`
+
+Example:
+
+```toml
+target_width = 800
+quality = 85
+output_suffix = ""
+```
+
+Notes:
+
+- `target_width` must be a positive integer.
+- `quality` must be an integer from 1 to 100.
+- `output_suffix` must be a quoted string, for example `"-new"`.
+- Use an empty suffix (`""`) to output `photo.webp`.
 
 Current defaults:
 
@@ -123,7 +145,3 @@ If ShellCheck is installed locally:
 ```bash
 shellcheck convert-to-webp.sh install.sh
 ```
-
-## License
-
-No license file is currently included in this repository. Add one before distributing the project broadly if you want to grant reuse permissions.
